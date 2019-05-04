@@ -1,0 +1,149 @@
+---
+title: "Boosting"
+author: "Guangjin Zhou"
+date: "May 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r cars, message=FALSE, warning=FALSE}
+library(ggplot2);library(gbm);library(e1071);library(pander)
+```
+
+## Bandruptcy Data
+
+```{r pressure, echo=FALSE}
+train<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/trainset',header = TRUE)
+dim(train)
+```
+
+```{r}
+test<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/testset',header = TRUE)
+dim(test)
+```
+
+# Boosting with binary outcome
+
+## Fit two gradient boosting models with 200 and 2000 trees respectively
+
+```{r}
+set.seed(471) 
+bt.200 <- gbm(V65~ ., data=train, distribution="bernoulli", n.trees=200) 
+bt.2000 <- gbm(V65~ ., data=train, distribution="bernoulli", n.trees=2000) 
+```
+
+### interaction depth minimum node number and learning rate
+
+```{r}
+bt.200$interaction.depth;
+bt.200$n.minobsinnode;
+bt.200$shrinkage;
+```
+
+### Summary of two models with plot
+
+```{r,fig.width=15,fig.height=12}
+
+head(summary(bt.200));head(summary(bt.2000))
+```
+
+### Relative influence of two models
+
+```{r message=FALSE, warning=FALSE}
+summary(bt.200,train,plotit=F)$rel.inf
+sum(summary(bt.200,train,plotit=F)$rel.inf) # 100 relative influence
+```
+
+```{r message=FALSE, warning=FALSE}
+summary(bt.2000,train,plotit=F)$rel.inf
+sum(summary(bt.2000,train,plotit=F)$rel.inf) # 100 relative influence
+```
+
+
+### Partial dependent plots of V39 and V46 from two model
+
+```{r}
+par(cfrow=c(2,2))
+plot(bt.200, i="V39",main="V39 from 200 tree boosting model")
+plot(bt.2000, i="V39",main="V39 from 2000 tree boosting model")
+plot(bt.200, i="V46",main="V46 from 200 tree boosting model")
+plot(bt.2000, i="V46",main="V46 from 2000 tree boosting model")
+
+```
+
+## Predicted probability by two models
+
+```{r}
+bt.200.pred = predict(object = bt.200,
+                              newdata = train,
+                              n.trees = 200,
+                              type = "response")
+
+bt.200.pred.df<-data.frame("Actual" = train$V65,  "PredictedProbability" = bt.200.pred)
+tail(bt.200.pred.df)
+```
+```{r}
+summary(bt.200.pred.df[bt.200.pred.df$Actual==0,]$PredictedProbability)
+summary(bt.200.pred.df[bt.200.pred.df$Actual==1,]$PredictedProbability)
+```
+
+
+```{r}
+bt.2000.pred = predict(object = bt.2000,
+                              newdata = train,
+                              n.trees = 2000,
+                              type = "response")
+
+bt.2000.pred.df<-data.frame("Actual" = train$V65, "PredictedProbability" = bt.2000.pred)
+tail(bt.2000.pred.df)
+```
+
+
+```{r}
+summary(bt.2000.pred.df[bt.2000.pred.df$Actual==0,]$PredictedProbability)
+summary(bt.2000.pred.df[bt.2000.pred.df$Actual==1,]$PredictedProbability)
+```
+
+From the summary of predicted values, the boosting model with 2000 trees is much better than model with 200 trees.
+
+### Log loss 
+
+```{r}
+LogLossBinary = function(actual, predicted, eps = 1e-15) {  
+    predicted = pmin(pmax(predicted, eps), 1-eps)  
+    - (sum(actual * log(predicted) + (1 - actual) * log(1 - predicted))) / length(actual)
+}
+```
+
+
+```{r}
+LogLossBinary(train$V65, bt.200.pred);LogLossBinary(train$V65, bt.2000.pred)
+```
+
+From the summary of log loss value, the boosting model with 2000 trees has smaller log loss number than the modle with 200 trees.
+
+###  Crossvalidation of test dataset with 2000 tree boost models
+
+```{r}
+ 
+                              
+bt.2000.cv <- gbm(formula = V65 ~ .,  distribution = "bernoulli", data = test, n.trees = 2000,
+                             shrinkage = .1, n.minobsinnode = 200, cv.folds = 5,
+                             n.cores = 1)
+```
+
+
+ 
+
+```{r}
+gbm.perf(bt.2000.cv);
+```
+
+For the best prection, we should choose the tree at blune line, where it needs 250-300 iteration to get the best tree.
+
+

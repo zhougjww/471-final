@@ -1,0 +1,113 @@
+---
+title: "471-final-SVM"
+author: "Guangjin Zhou"
+date: "May 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r cars, message=FALSE, warning=FALSE}
+library(ggplot2);library(e1071);library(pander)
+```
+
+## Bandruptcy Data
+
+```{r pressure, echo=FALSE}
+train<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/trainset',header = TRUE)
+dim(train)
+train$V65f<-factor(train$V65);train$V65<-NULL
+levels(train$V65f)
+ 
+```
+
+```{r}
+test<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/testset',header = TRUE)
+dim(test)
+test$V65f<-factor(test$V65);test$V65<-NULL
+```
+
+## Linear SVM model
+
+### A smiple linear SVM model with cost as 1
+
+```{r}
+set.seed(471)
+svmfit1 <- svm(V65f ~., data=train, kernel='linear',cost=1); summary(svmfit1)
+```
+
+This model produced 529 Support Vectors (273 for 0 256 for 1).
+
+### Partial dependence plots based sVM model
+
+I plotted few top ranked important variables (V39, V35, V46 and V12) to look at their dependence.
+
+```{r}
+plot(svmfit1, train,  V39~V46,grid=200, svSymbol=2, dataSymbol=3,color.palette=terrain.colors);
+plot(svmfit1, train,  V39~ V35,grid=200, svSymbol=2, dataSymbol=3,color.palette=terrain.colors)
+plot(svmfit1, train, V39~V12, grid=200, svSymbol=19, dataSymbol=1, color.palette=terrain.colors)  
+```
+
+### Prediction values and error rate from this SVM model
+
+```{r}
+table(train$V65f, svmfit1$fitted) ## training set error rate 250/3838 = 0.065 
+table(test$V65f, predict(svmfit1, test))  ## test set error rate 140/1919=0.073
+```
+
+The mode predicts that training set error rate is 250/3838 = 0.065,test set error rate is: 140/1919=0.073.
+ 
+### Linear SVM tuning
+
+```{r}
+set.seed(471)
+tune.out <- tune(svm, V65f ~ ., data = train, kernel = "linear", ranges = list(cost = c(0.1,1,10)),tunecontrol = tune.control(nrepeat=5, cross=2))
+print(summary(tune.out)) 
+```
+
+The best performance of linear SVM has error rate as 0.06591975,  which means the best performance model has the cost as 0.1.
+
+```{r message=FALSE, warning=FALSE}
+plot(tune.out$best.model, train, V39~V35, grid=200, svSymbol=19, dataSymbol=1, color.palette=terrain.colors)
+```
+
+### Error rate from best performance linear kernal SVM
+
+```{r}
+table(train$V65f, tune.out$best.model$fitted) ## training set error rate 253/3838 = 0.06591975 
+table(test$V65f, predict(tune.out$best.model, test))  ## test set error rate 142/1919=0.07399687
+```
+
+The tuned best performanc model predict that training set error rate is 253/3838 = 0.066, and the test set error rate 142/1919=0.074, which is very close to original model.
+
+## Kernal SVM 
+
+## kernel SVM tuning
+
+```{r message=FALSE, warning=FALSE}
+set.seed(471)
+tune.out2 <- tune(svm, V65f ~ ., data = train, kernel = "radial", ranges = list(cost = c(0.1,1,10), gamma = c(0.5, 1)),tunecontrol = tune.control(nrepeat=5, cross=2))
+print(summary(tune.out2))
+```
+
+The best performance kernal model has error rate as 0.06800417, which means the best performance model has the cost as 1 and gamma as 0.5. 
+
+
+### A partial dependence plot with tuned model
+
+```{r message=FALSE, warning=FALSE}
+plot(tune.out2$best.model, train, V39~V35, grid=200, svSymbol=19, dataSymbol=1, color.palette=terrain.colors)
+```
+
+### Error rate from best performance radinal kernal SVM
+
+```{r}
+table(train$V65f, tune.out2$best.model$fitted) ## training set error rate 161/3838 = 0.04194893 
+table(test$V65f, predict(tune.out2$best.model, test))  ## test set error rate 139/1919=0.07243356
+```
+
+Based on the best performance kernal SVM model, the training set prediction error rate is 161/3838 = 0.042, andtest set error rate is 139/1919=0.072. Thus, I concluded that the tuned radinal kernal model has reduced error rate. 

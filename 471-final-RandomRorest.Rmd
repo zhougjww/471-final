@@ -1,0 +1,223 @@
+---
+title: "471final-Random Forest"
+author: "Guangjin Zhou"
+date: "May 1, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r cars, message=FALSE, warning=FALSE}
+library(ggplot2);library(randomForest);library(gbm);library(e1071);library(pander)
+```
+
+## Bandruptcy Data
+
+```{r pressure, echo=FALSE}
+train<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/trainset',header = TRUE)
+dim(train)
+head(train)[,1:5]
+```
+
+```{r}
+test<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/testset',header = TRUE)
+dim(test)
+head(test)[,50:55]
+```
+
+
+## Check missingniss
+ 
+```{r}
+apply(is.na(train),2,sum);  ## Training data no missing
+
+apply(is.na(test),2,sum) ## Test data no missing
+```
+ 
+There is no missing in the all records. There is no V21,V24,V27,V28,V37,V45,V53,V54 and V64.
+
+## Variable codebook
+
+ X1 net profit / total assets 
+ X2 total liabilities / total assets 
+ X3 working capital / total assets 
+ X4 current assets / short-term liabilities 
+ X5 [(cash + short-term securities + receivables - short-term liabilities)/(operatingexpenses-depreciation)]*365 
+ X6 retained earnings / total assets 
+ X7 EBIT / total assets 
+ X8 book value of equity / total liabilities 
+ X9 sales / total assets 
+ X10 equity / total assets 
+ X11 (gross profit + extraordinary items + financial expenses) / total assets 
+ X12 gross profit / short-term liabilities 
+ X13 (gross profit + depreciation) / sales 
+ X14 (gross profit + interest) / total assets 
+ X15 (total liabilities * 365) / (gross profit + depreciation) 
+ X16 (gross profit + depreciation) / total liabilities 
+ X17 total assets / total liabilities 
+ X18 gross profit / total assets 
+ X19 gross profit / sales 
+ X20 (inventory * 365) / sales 
+ X22 profit on operating activities / total assets 
+ X23 net profit / sales 
+ X25 (equity - share capital) / total assets 
+ X26 (net profit + depreciation) / total liabilities
+ X29 logarithm of total assets 
+ X30 (total liabilities - cash) / sales 
+ X31 (gross profit + interest) / sales 
+ X32 (current liabilities * 365) / cost of products sold 
+ X33 operating expenses / short-term liabilities 
+ X34 operating expenses / total liabilities 
+ X35 profit on sales / total assets 
+ X36 total sales / total assets 
+ X38 constant capital / total assets 
+ X39 profit on sales / sales 
+ X40 (current assets - inventory - receivables) / short-term liabilities 
+ X41 total liabilities / ((profit on operating activities + depreciation) * (12/365)) 
+ X42 profit on operating activities / sales 
+ X43 rotation receivables + inventory turnover in days 
+ X44 (receivables * 365) / sales 
+ X46 (current assets - inventory) / short-term liabilities 
+ X47 (inventory * 365) / cost of products sold 
+ X48 EBITDA (profit on operating activities - depreciation) / total assets 
+ X49 EBITDA (profit on operating activities - depreciation) / sales 
+ X50 current assets / total liabilities 
+ X51 short-term liabilities / total assets 
+ X52 (short-term liabilities * 365) / cost of products sold) 
+ X55 working capital 
+ X56 (sales - cost of products sold) / sales 
+ X57 (current assets - inventory - short-term liabilities) / (sales - gross profit - depreciation) 
+ X58 total costs /total sales 
+ X59 long-term liabilities / equity 
+ X60 sales / inventory 
+ X61 sales / receivables 
+ X62 (short-term liabilities *365) / sales 
+ X63 sales / short-term liabilities 
+X65 Outcome 1 and 0
+
+Build prediction models using random forests, boosting, and SVM. I would like to see that you have made an e???ort to improve your models' performance. Turn in a summary of what you have tried, your ???nal models, and the accuracy rate on the test sets. 
+ 
+## Outcome-bankruptcy:binary varialbe
+
+### Train dataset outcome
+
+#### Frequency
+
+```{r}
+pander(table(train$V65))
+pander(100*round(prop.table(table(train$V65)),4))
+```
+#### As factor
+
+```{r}
+train$V65f<-factor(train$V65);table(train$V65f)
+train$V65<-NULL
+```
+
+
+### Test dataset outcome
+
+#### Frequency
+
+```{r}
+pander(table(test$V65))
+pander(100*round(prop.table(table(test$V65)),4))
+``` 
+#### As factor
+
+```{r}
+test$V65f<-factor(test$V65);table(test$V65f)
+test$V65<-NULL
+```
+
+## Random forest
+
+## A random forest model with 200 trees
+
+```{r,fig.width=15}
+set.seed(471)  
+rf <- randomForest(V65f ~. , data=train, proximity=FALSE, importance=TRUE, ntree=200, maxdepth=5)
+```
+
+## Parameter, OOB and prediction Error
+
+```{r}
+rf$mtry # default is 33% of features
+mean(rf$oob.times/rf$ntree) # the average out of bag is 0.368
+```
+
+```{r}
+table(train$V65f, predict(rf))
+```
+
+
+## Two different measurment of variable importance
+
+```{r, fig.width=15,fig.height=12}
+varImpPlot(rf, type=1, cex=.8, color="black",pch=16, scale=T)  # Type 1 show Mean decrease of accuracy
+varImpPlot(rf, type=2, cex=.8, color="purple",pch=16, scale=T) # Type 2 table show Mean decrease of gini index
+```
+
+## M hyperparameter tuning
+
+### Four models with different M
+
+```{r}
+set.seed(471)  
+rf.1 <- randomForest(V65f ~. , data=train, proximity=FALSE, importance=TRUE, ntree=200, maxdepth=5, na.action=na.roughfix, mtry=1)
+
+rf.5 <- randomForest(V65f ~. , data=train, proximity=FALSE, importance=TRUE, ntree=200, maxdepth=5, na.action=na.roughfix, mtry=5)
+
+rf.10 <- randomForest(V65f ~. , data=train, proximity=FALSE, importance=TRUE, ntree=200, maxdepth=5, na.action=na.roughfix, mtry=10)
+
+rf.50 <- randomForest(V65f ~. , data=train, proximity=FALSE, importance=TRUE, ntree=200, maxdepth=5, na.action=na.roughfix, mtry=20)
+```
+
+### Varaibel importance plots of four model
+
+#### type 2 plots
+
+```{r,fig.width=15,fig.height=12}
+par(mfrow = c(2, 2))
+varImpPlot(rf.1, type=2, cex=.8, color="black",pch=16, scale=T)
+varImpPlot(rf.5, type=2, cex=.8, color="black",pch=16, scale=T)
+varImpPlot(rf.10, type=2, cex=.8, color="black",pch=16, scale=T)
+varImpPlot(rf.50, type=2, cex=.8, color="black",pch=16, scale=T)
+```
+#### type 1 plots
+
+```{r,fig.width=15,fig.height=12}
+par(mfrow=c(2,2))
+varImpPlot(rf.1, type=1, cex=.8, color="black",pch=16, scale=T)
+varImpPlot(rf.5, type=1, cex=.8, color="black",pch=16, scale=T)
+varImpPlot(rf.10, type=1, cex=.8, color="black",pch=16, scale=T)
+varImpPlot(rf.50, type=1, cex=.8, color="black",pch=16, scale=T)
+```
+
+### 4 models Prediction Error by testing dataset  
+
+```{r}
+table(test$V65f, predict(rf.1,test)) ## 142 errors out of 1919
+table(test$V65f, predict(rf.5,test))  ## 136 errors out of 1919
+table(test$V65f, predict(rf.10,test))  ## 132 errors out of 1919
+table(test$V65f, predict(rf.50,test))  ## 131 errors out of 1919
+```
+
+
+### Error plots from four models
+
+```{r,fig.width=15,fig.height=12}
+par(mfrow=c(2,2))
+plot(rf.1$err.rate[,1], type='l', xlab='trees', ylab='Error') 
+plot(rf.5$err.rate[,1], type='l', xlab='trees', ylab='Error') 
+plot(rf.10$err.rate[,1], type='l', xlab='trees', ylab='Error') 
+plot(rf.50$err.rate[,1], type='l', xlab='trees', ylab='Error') 
+```
+
+From above tuning process, I would say higher M hyperparameter number gave a little improved prediction error, but Mtry=5 or mtry=10 or 50 didn't make huge difference.
+
+

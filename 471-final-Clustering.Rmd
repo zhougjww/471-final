@@ -1,0 +1,155 @@
+---
+title: "471-final-Clustering"
+author: "Guangjin Zhou"
+date: "May 2, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r cars, message=FALSE, warning=FALSE}
+library(ggplot2);library(MASS);library(pander)
+```
+
+## Bandruptcy Data
+
+```{r pressure, echo=FALSE}
+train<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/trainset',header = TRUE)
+dim(train)
+```
+
+```{r}
+test<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/testset',header = TRUE)
+dim(test)
+```
+
+## Data standardization
+
+```{r}
+train_st <- scale(train) # standardize variables
+head(train_st)[1:5, 1:5]
+```
+
+## Estimate number of clusters
+
+```{r message=FALSE, warning=FALSE}
+set.seed(471)
+wss <- (nrow(train_st)-1)*sum(apply(train_st,2,var))
+for (i in 2:55) wss[i] <- sum(kmeans(train_st, 
+   centers=i)$withinss)
+plot(1:55, wss, type="b", xlab="Number of Clusters",
+  ylab="Within groups sum of squares")
+```
+
+Baesd on above plot and sum of square, I would fit a 2 means and 10 means clustering. 
+
+## K means clustering
+
+### 2 K-means clsuter
+
+```{r}
+set.seed(471)
+km.out <- kmeans(train_st, 2, nstart = 10)
+summary(km.out)
+```
+
+```{r,fig}
+plot(train_st, col = (km.out$cluster + 1), main = "K-Means Clustering Results with K=2", xlab = "", ylab = "", pch = 19, cex = 2)
+```
+
+### 10 K-means clsuter
+
+```{r}
+set.seed(471)
+km.out.10 <- kmeans(train_st, 10, nstart = 10)
+summary(km.out.10)
+```
+
+
+```{r}
+plot(train_st, col = (km.out.10$cluster + 1), main = "K-Means Clustering Results with K=10", xlab = "", ylab = "", pch = 19, cex = 2)
+```
+
+I am not sure whether the outcome were the only separated cluster, so I decide to remove outcome and try K-means cluster again.
+
+### Remove outcome V65 and K-means clustering
+
+```{r}
+train_st2<-train_st[,-55]; dim(train_st2)
+
+```
+
+
+```{r}
+tail(train_st2)[,50:54]
+```
+
+
+
+```{r}
+set.seed(471)
+km.10 <- kmeans(train_st2, 10, nstart=10)
+```
+
+```{r}
+plot(train_st, col = (km.10$cluster + 1), main = "K-Means Clustering Results with K=10 without outcome", xlab = "", ylab = "", pch = 19, cex = 2)
+```
+
+Next, I explored heirchica Clustering. 
+
+## Heirchica Clustering 
+
+### The three type of dendrograms (Complete,Average and Single)
+
+```{r,fig.width=10, fig.height= 12}
+set.seed(471)
+d <- dist(train_st, method = "euclidean") # distance matrix
+plot(hclust(d, method="complete"),labels=F, xlab='', main="Complete Linkage")
+plot(hclust(d, method="average"),labels=F, xlab='', main="Average Linkage")
+plot(hclust(d, method="single"),labels=F, xlab='', main="Single Linkage")
+```
+
+###  The three dendrograms based on dissimilarity (1-Pearson correlation)
+
+```{r}
+set.seed(471)
+par(frow=c(2,2))
+d2 = as.dist(1 - cor(t(train_st)))
+plot(hclust(d2, method='complete'), labels=F, xlab='', main="Complete Linkage")
+plot(hclust(d2, method='average'), labels=F, xlab='', main="Average Linkage") 
+plot(hclust(d2, method='single'), labels=F, xlab='', main="Single Linkage")
+```
+
+### Cut complete tree by 5 subsets
+
+```{r}
+set.seed(471)
+fit <- hclust(d2, method="complete")
+plot(fit,labels=F, xlab='', main="Complete linkage based on dissimilarity")   
+hc.clusters <- cutree(fit, k=5) # cut tree into 5 clusters
+rect.hclust(fit, k=5, border="red") # draw dendogram with red borders around the 5 clusters 
+```
+
+### Compare heirchical cluster with outcome levels
+
+```{r}
+ table(hc.clusters, train$V65)
+```
+
+I use cut function and partitioned the complete type of dendrogram into five parts (see below), and also compare these five parts and the outcome (see figure and  table below). The outcome (1, yes, bankruptcy) predominantly located at 2nd part of hierarchical clustering dendrogram (193/273). 
+
+## Compare K-means cluster with heirchical cluster
+
+```{r}
+set.seed(471)
+ 
+km.clusters <- km.out$cluster
+table(km.clusters, hc.clusters)
+```
+
+I also compared 2-mean clusters and 5-cut endrogram (see table below). The table shows that the first cluster of k-means overlapped with majority of hierarchical clusters. 
+ 

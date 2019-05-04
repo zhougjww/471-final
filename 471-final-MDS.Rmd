@@ -1,0 +1,55 @@
+---
+title: "471-final-MDS"
+author: "Guangjin Zhou"
+date: "May 4, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+ 
+## Libraries
+
+```{r cars}
+library(ggplot2);library(MASS)
+```
+
+## Bandruptcy Data
+
+```{r pressure, echo=FALSE}
+train<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/trainset',header = TRUE)
+dim(train)
+
+```
+
+```{r}
+test<-read.table('C:/Users/gxz25/Documents/machine_learning_data_mining_class/471-final/testset',header = TRUE)
+dim(test)
+
+```
+
+## Select 100 records and transform as distance matrix
+
+```{r}
+dt<-as.matrix(train [c(1:100),])
+dim(dt)
+dt[1:5, 1:5]
+```
+
+## Standardization and distance matrix
+
+```{r}
+data.dist1 <- dist(scale(train)) 
+cmds1 <- cmdscale(data.dist1, k=2, add=T, list.=T) ## 2-dim, returning a list because list.=T str(cmds1)
+str(cmds1)
+```
+
+## Simple MDS map
+
+```{r}
+point = subset(data.frame(cmds1$points))
+ggplot(point,aes(X1, X2))+geom_point(aes(colour=1), size=6) 
+```
+
